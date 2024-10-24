@@ -1,0 +1,49 @@
+.focostv-no-ad {
+    background-color: #0f0f0f;
+    padding: 1.25rem;
+    text-align: center;
+}
+
+.focostv-no-ad-logo-container {
+    text-align: center;
+    user-select: none;
+}
+
+.focostv-no-ad-title {
+    font-size: 1.75rem;
+    font-family: 'Poppins', sans-serif;
+    color: #d9d9d9;
+    margin: 0;
+    font-weight: 500;
+    user-select: none;
+}
+
+.focostv-no-ad-logo-container,
+.focostv-no-ad-content,
+.focostv-no-ad-contact {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+.focostv-no-ad-button {
+    color: #FFBE02;
+    padding: 1rem;
+    cursor: pointer;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 500;
+}
+
+.focostv-mobile-pages_footer {
+    padding: 0.75rem;
+}
+
+.focostv-mobile-pages_footer .focostv-no-ad-title {
+    font-size: 1rem;
+    font-weight: 400;
+}
+
+.focostv-mobile-pages_footer .focostv-no-ad-logo-container,
+.focostv-mobile-pages_footer .focostv-no-ad-contact {
+    display: none;
+}
