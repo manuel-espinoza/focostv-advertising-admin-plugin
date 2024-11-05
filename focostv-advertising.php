@@ -123,37 +123,28 @@ function focostv_advertising_shortcode($atts)
 {
     $atts = shortcode_atts(
         array(
-            'type' => 'all', // Puede ser 'all', 'mobile', 'desktop', 'page', o 'posts'
+            'group' => '', // Puede ser 'mobile_page', 'mobile_posts', 'desktop_page', o 'desktop_posts'
         ),
         $atts,
         'focostv_advertising'
     );
 
     $images = get_option('focostv_advertising_images', array());
-    if (empty($images)) {
+
+    // Validar si el grupo solicitado existe y tiene una imagen asignada
+    if (empty($images) || !isset($images[$atts['group']])) {
         return '';
     }
 
-    $output = '<div class="focostv-advertising-images">';
-
-    foreach ($images as $key => $image_id) {
-        if (
-            $atts['type'] == 'all' ||
-            ($atts['type'] == 'mobile' && strpos($key, 'mobile') !== false) ||
-            ($atts['type'] == 'desktop' && strpos($key, 'desktop') !== false) ||
-            ($atts['type'] == 'page' && strpos($key, 'page') !== false) ||
-            ($atts['type'] == 'posts' && strpos($key, 'posts') !== false)
-        ) {
-
-            $image_url = wp_get_attachment_image_url($image_id, 'full');
-            if ($image_url) {
-                $output .= '<div class="focostv-ad-' . esc_attr($key) . '">';
-                $output .= '<img src="' . esc_url($image_url) . '" alt="' . esc_attr($key) . ' advertisement">';
-                $output .= '</div>';
-            }
-        }
+    // Obtener URL de la imagen del grupo especificado
+    $image_url = wp_get_attachment_image_url($images[$atts['group']], 'full');
+    if (!$image_url) {
+        return '';
     }
 
+    // Generar la salida HTML
+    $output = '<div class="focostv-advertising-image focostv-ad-' . esc_attr($atts['group']) . '">';
+    $output .= '<img src="' . esc_url($image_url) . '" alt="' . esc_attr($atts['group']) . ' advertisement">';
     $output .= '</div>';
 
     return $output;
