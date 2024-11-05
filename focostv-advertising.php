@@ -2,226 +2,160 @@
 /*
 Plugin Name: Focos TV Advertising Administration
 Description: Administra y carga los artes para visualizarlos en el sitio web, configurable desde el panel de administración.
-Version: 1.0
+Version: 1.1
 Author: Manuel Espinoza
 */
 
+// Agregar menú en el panel de administración
 function focostv_advertising_add_admin_menu()
 {
     add_menu_page(
-        'FOCOS Advertising Administration', // Titulo de la pagina
-        'FOCOS Advertising Admin', // Titulo del menu
-        'manage_options', // Capacidad
-        'focostv-advertising-admin', // Slug del menu
-        'focostv_advertising_admin_page', // Funcion para mostrar el contenido
+        'FOCOS Advertising Administration',
+        'FOCOS Advertising Admin',
+        'manage_options',
+        'focostv-advertising-admin',
+        'focostv_advertising_admin_page',
         'dashicons-schedule'
     );
 }
 add_action('admin_menu', 'focostv_advertising_add_admin_menu');
 
+// Registrar configuraciones
+function focostv_advertising_register_settings()
+{
+    register_setting('focostv_advertising_options', 'focostv_advertising_images', 'focostv_advertising_sanitize_images');
+}
+add_action('admin_init', 'focostv_advertising_register_settings');
+
+// Sanitizar las imágenes
+function focostv_advertising_sanitize_images($input)
+{
+    $valid_keys = array('mobile_page', 'mobile_posts', 'desktop_page', 'desktop_posts');
+    $new_input = array();
+    foreach ($valid_keys as $key) {
+        if (isset($input[$key])) {
+            $new_input[$key] = absint($input[$key]);
+        }
+    }
+    return $new_input;
+}
+
+// Página de administración
 function focostv_advertising_admin_page()
 {
+    wp_enqueue_media();
+    $images = get_option('focostv_advertising_images', array());
     ?>
     <div class="wrap">
-        <h1 class="focostv-ad-title">Administraci&oacute;n de publicidad en el sitio</h1>
-        <form method="post" action="options.php" enctype="multipart/form-data">
-            <?php
-            settings_fields('focostv_advertising_options_group');
-            do_settings_sections('focostv-advertising-admin');
-            submit_button();
-            ?>
+        <h1>FOCOS Advertising Administration</h1>
+        <form method="post" action="options.php">
+            <?php settings_fields('focostv_advertising_options'); ?>
+            <?php do_settings_sections('focostv_advertising_options'); ?>
+            <table class="form-table">
+                <?php
+                $image_sections = array(
+                    'mobile_page' => 'Ad Mobile Page (320x320)',
+                    'mobile_posts' => 'Ad Mobile Posts (320x320)',
+                    'desktop_page' => 'Ad Desktop Page (300x600)',
+                    'desktop_posts' => 'Ad Desktop Posts (800x250)'
+                );
+                foreach ($image_sections as $key => $label) :
+                ?>
+                <tr valign="top">
+                    <th scope="row"><?php echo esc_html($label); ?></th>
+                    <td>
+                        <div class="image-preview-wrapper">
+                            <img id="preview_<?php echo esc_attr($key); ?>" src="<?php echo isset($images[$key]) ? esc_url(wp_get_attachment_image_url($images[$key], 'medium')) : ''; ?>" style="max-width:300px;<?php echo !isset($images[$key]) ? 'display:none;' : ''; ?>">
+                        </div>
+                        <input type="hidden" name="focostv_advertising_images[<?php echo esc_attr($key); ?>]" id="<?php echo esc_attr($key); ?>" value="<?php echo isset($images[$key]) ? esc_attr($images[$key]) : ''; ?>">
+                        <button type="button" class="button" id="upload_<?php echo esc_attr($key); ?>_button">Seleccionar imagen</button>
+                        <button type="button" class="button" id="remove_<?php echo esc_attr($key); ?>_button" style="<?php echo !isset($images[$key]) ? 'display:none;' : ''; ?>">Eliminar imagen</button>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </table>
+            <?php submit_button(); ?>
         </form>
     </div>
+
+    <script>
+    jQuery(document).ready(function($) {
+        <?php foreach ($image_sections as $key => $label) : ?>
+        $('#upload_<?php echo $key; ?>_button').click(function(e) {
+            e.preventDefault();
+            var image_frame;
+            if (image_frame) {
+                image_frame.open();
+            } else {
+                image_frame = wp.media({
+                    title: 'Seleccionar imagen para <?php echo $label; ?>',
+                    multiple: false
+                });
+
+                image_frame.on('select', function() {
+                    var attachment = image_frame.state().get('selection').first().toJSON();
+                    var image_url = attachment.sizes && attachment.sizes.medium 
+                        ? attachment.sizes.medium.url 
+                        : attachment.url;
+                    $('#<?php echo $key; ?>').val(attachment.id);
+                    $('#preview_<?php echo $key; ?>').attr('src', image_url).show();
+                    $('#remove_<?php echo $key; ?>_button').show();
+                });
+
+                image_frame.open();
+            }
+        });
+
+        $('#remove_<?php echo $key; ?>_button').click(function(e) {
+            e.preventDefault();
+            $('#<?php echo $key; ?>').val('');
+            $('#preview_<?php echo $key; ?>').attr('src', '').hide();
+            $(this).hide();
+        });
+        <?php endforeach; ?>
+    });
+    </script>
     <?php
 }
 
-function focostv_advertising_settings_init()
-{
-    // mobile
-    register_setting('focostv_advertising_options_group', 'focostv_mobile_pages_ad_image');
-    register_setting('focostv_advertising_options_group', 'focostv_mobile_pages_footer_ad_image');
-    register_setting('focostv_advertising_options_group', 'focostv_mobile_posts_ad_image');
-    // desktop
-    register_setting('focostv_advertising_options_group', 'focostv_desktop_pages_ad_image');
-    register_setting('focostv_advertising_options_group', 'focostv_desktop_posts_ad_image');
-
-
-    add_settings_section(
-        'focostv_advertising_section',
-        'Subir Publicidad',
-        null,
-        'focostv-advertising-admin'
-    );
-
-
-    add_settings_field(
-        'focostv_mobile_pages_ad_image_field',
-        'Publicidad para Mobile - Páginas (320x320)',
-        'focostv_mobile_pages_ad_image_callback',
-        'focostv-advertising-admin',
-        'focostv_advertising_section'
-    );
-
-    add_settings_field(
-        'focostv_mobile_pages_footer_ad_image_field',
-        'Publicidad para Mobile - Footer (300x100)',
-        'focostv_mobile_pages_footer_ad_image_callback',
-        'focostv-advertising-admin',
-        'focostv_advertising_section'
-    );
-
-    add_settings_field(
-        'focostv_mobile_posts_ad_image_field',
-        'Publicidad para Mobile - Posts (320x320)',
-        'focostv_mobile_posts_ad_image_callback',
-        'focostv-advertising-admin',
-        'focostv_advertising_section'
-    );
-
-    // DESKTOP
-    add_settings_field(
-        'focostv_desktop_pages_ad_image_field',
-        'Publicidad para pages Desktop (300x600)',
-        'focostv_desktop_pages_ad_image_callback',
-        'focostv-advertising-admin',
-        'focostv_advertising_section'
-    );
-
-    add_settings_field(
-        'focostv_desktop_posts_ad_image_field',
-        'Publicidad para posts Desktop (800x250)',
-        'focostv_desktop_posts_ad_image_callback',
-        'focostv-advertising-admin',
-        'focostv_advertising_section'
-    );
-}
-add_action('admin_init', 'focostv_advertising_settings_init');
-
-function focostv_mobile_pages_ad_image_callback()
-{
-    $mobile_pages_ad = get_option('focostv_mobile_pages_ad_image');
-    echo '<input type="file" name="focostv_mobile_pages_ad_image" accept=".webm, .png, .jpg, .jpeg, .gif" />';
-    if ($mobile_pages_ad) {
-        echo '<p><img src="' . esc_url($mobile_pages_ad) . '" style="max-width: 320px;"></p>';
-    }
-}
-
-// Callback para subir la imagen de publicidad mobile - Posts
-function focostv_mobile_posts_ad_image_callback()
-{
-    $mobile_posts_ad = get_option('focostv_mobile_posts_ad_image');
-    echo '<input type="file" name="focostv_mobile_posts_ad_image" accept=".webm, .png, .jpg, .jpeg, .gif" />';
-    if ($mobile_posts_ad) {
-        echo '<p><img src="' . esc_url($mobile_posts_ad) . '" style="max-width: 320px;"></p>';
-    }
-}
-
-function focostv_mobile_pages_footer_ad_image_callback()
-{
-    $mobile_pages_footer_ad = get_option('focostv_mobile_pages_footer_ad_image');
-    echo '<input type="file" name="focostv_mobile_pages_footer_ad_image" accept=".webm, .png, .jpg, .jpeg, .gif" />';
-    if ($mobile_pages_footer_ad) {
-        echo '<p><img src="' . esc_url($mobile_pages_footer_ad) . '" style="max-width: 300px;"></p>';
-    }
-}
-
-function focostv_desktop_pages_ad_image_callback()
-{
-    $desktop_ad = get_option('focostv_desktop_pages_ad_image');
-    echo '<input type="file" name="focostv_desktop_pages_ad_image" accept=".webm, .png, .jpg, .jpeg, .gif" />';
-    if ($desktop_ad) {
-        echo '<p><img src="' . esc_url($desktop_ad) . '" style="max-width: 300px;"></p>';
-    }
-}
-
-function focostv_desktop_posts_ad_image_callback()
-{
-    $desktop_ad = get_option('focostv_desktop_posts_ad_image');
-    echo '<input type="file" name="focostv_desktop_posts_ad_image" accept=".webm, .png, .jpg, .jpeg, .gif" />';
-    if ($desktop_ad) {
-        echo '<p><img src="' . esc_url($desktop_ad) . '" style="max-width: 300px;"></p>';
-    }
-}
-
-function focostv_save_ad_images()
-{
-    if (isset($_FILES['focostv_mobile_pages_ad_image']) && !empty($_FILES['focostv_mobile_pages_ad_image']['tmp_name'])) {
-        $uploaded_mobile_pages = media_handle_upload('focostv_mobile_pages_ad_image', 0);
-
-        if (!is_wp_error($uploaded_mobile_pages)) {
-            update_option('focostv_mobile_pages_ad_image', wp_get_attachment_url($uploaded_mobile_pages));
-        }
-    }
-
-    if (isset($_FILES['focostv_mobile_posts_ad_image']) && !empty($_FILES['focostv_mobile_posts_ad_image']['tmp_name'])) {
-        $uploaded_mobile_posts = media_handle_upload('focostv_mobile_posts_ad_image', 0);
-
-        if (!is_wp_error($uploaded_mobile_posts)) {
-            update_option('focostv_mobile_posts_ad_image', wp_get_attachment_url($uploaded_mobile_posts));
-        }
-    }
-    if (isset($_FILES['focostv_mobile_pages_footer_ad_image']) && !empty($_FILES['focostv_mobile_pages_footer_ad_image']['tmp_name'])) {
-        $uploaded_mobile_pages_footer = media_handle_upload('focostv_mobile_pages_footer_ad_image', 0);
-
-        if (!is_wp_error($uploaded_mobile_posts)) {
-            update_option('focostv_mobile_pages_footer_ad_image', wp_get_attachment_url($uploaded_mobile_pages_footer));
-        }
-    }
-    if (isset($_FILES['focostv_desktop_pages_ad_image']) && !empty($_FILES['focostv_desktop_pages_ad_image']['tmp_name'])) {
-        $uploaded_desktop_pages = media_handle_upload('focostv_desktop_pages_ad_image', 0);
-
-        if (!is_wp_error($uploaded_desktop_pages)) {
-            update_option('focostv_desktop_pages_ad_image', wp_get_attachment_url($uploaded_desktop_pages));
-        }
-    }
-
-    if (isset($_FILES['focostv_desktop_posts_ad_image']) && !empty($_FILES['focostv_desktop_posts_ad_image']['tmp_name'])) {
-        $uploaded_desktop_posts = media_handle_upload('focostv_desktop_posts_ad_image', 0);
-
-        if (!is_wp_error($uploaded_desktop_posts)) {
-            update_option('focostv_desktop_posts_ad_image', wp_get_attachment_url($uploaded_desktop_posts));
-        }
-    }
-}
-add_action('admin_post_save_ad_images', 'focostv_save_ad_images');
-
+// Shortcode para mostrar las imágenes
 function focostv_advertising_shortcode($atts)
 {
     $atts = shortcode_atts(
         array(
-            'type' => 'mobile',  // mobile o desktop
-            'location' => 'posts',   // posts, pages, footer
+            'type' => 'all', // Puede ser 'all', 'mobile', 'desktop', 'page', o 'posts'
         ),
         $atts,
-        'focostv_ad' // Nombre del shortcode
+        'focostv_advertising'
     );
 
-    $option_name = 'focostv_' . $atts['type'] . '_' . $atts['location'] . '_ad_image';
-    $ad_image = get_option($option_name);
-
-
-    if ($ad_image) {
-        return '<div class="focostv-ad focostv-' . esc_attr($atts['type']) . '-' . esc_attr($atts['location']) . '">
-                    <img src="' . esc_url($ad_image) . '" alt="Publicidad para FOCOSTV" />
-                </div>';
+    $images = get_option('focostv_advertising_images', array());
+    if (empty($images)) {
+        return '';
     }
 
-    return '<div class="focostv-no-ad focostv-' . esc_attr($atts['type']) . '-' . esc_attr($atts['location']) . '">
-                <div class="focostv-no-ad-logo-container">
-                    <img class="focostv-no-ad-logo" src="' . plugins_url("focostv-logo-white.svg", __FILE__) . '" alt="FOCOSTV AD LOGO" />
-                </div>
-                <div class="focostv-no-ad-content">
-                    <h6 class="focostv-no-ad-title">¡ANUNCIATE CON NOSOTROS!</h6>
-                </div>
-                <div class="focostv-no-ad-contact">
-                    <a href="#" class="focostv-no-ad-button">Contactar</a>
-                </div>
-            </div>';
-}
-add_shortcode('focostv_ad', 'focostv_advertising_shortcode');
+    $output = '<div class="focostv-advertising-images">';
 
-function focostv_advertising_enqueue_styles()
-{
-    wp_enqueue_style('focostv-advertising-style', plugins_url('style.css', __FILE__));
+    foreach ($images as $key => $image_id) {
+        if (
+            $atts['type'] == 'all' ||
+            ($atts['type'] == 'mobile' && strpos($key, 'mobile') !== false) ||
+            ($atts['type'] == 'desktop' && strpos($key, 'desktop') !== false) ||
+            ($atts['type'] == 'page' && strpos($key, 'page') !== false) ||
+            ($atts['type'] == 'posts' && strpos($key, 'posts') !== false)
+        ) {
+
+            $image_url = wp_get_attachment_image_url($image_id, 'full');
+            if ($image_url) {
+                $output .= '<div class="focostv-ad-' . esc_attr($key) . '">';
+                $output .= '<img src="' . esc_url($image_url) . '" alt="' . esc_attr($key) . ' advertisement">';
+                $output .= '</div>';
+            }
+        }
+    }
+
+    $output .= '</div>';
+
+    return $output;
 }
-add_action('wp_enqueue_scripts', 'focostv_advertising_enqueue_styles');
+add_shortcode('focostv_advertising', 'focostv_advertising_shortcode');
