@@ -193,3 +193,9 @@ function focostv_advertising_shortcode($atts)
     return $output;
 }
 add_shortcode('focostv_advertising', 'focostv_advertising_shortcode');
+
+function focostv_advertising_enqueue_styles()
+{
+    wp_enqueue_style('focostv-advertising-style', plugins_url('style.css', __FILE__));
+}
+add_action('wp_enqueue_scripts', 'focostv_advertising_enqueue_styles');
