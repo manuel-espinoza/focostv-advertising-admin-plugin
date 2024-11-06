@@ -63,8 +63,8 @@ function focostv_advertising_admin_page()
     ?>
     <div class="wrap">
         <h1>FOCOS Advertising Administration</h1>
-        <h5>En esta seccion puede subir las imagenes que se mostrar&aacute;n como publicidad dentro del sitio, en las
-            secciones espec&iacute;ficas para m&oacute;viles y desktops y segun la resoluci&oacute;n permitida</h5>
+        <h3>En esta seccion puede subir las imagenes que se mostrar&aacute;n como publicidad dentro del sitio, en las
+            secciones espec&iacute;ficas para m&oacute;viles y desktops y segun la resoluci&oacute;n permitida</h3>
         <form method="post" action="options.php">
             <?php settings_fields('focostv_advertising_options'); ?>
             <?php do_settings_sections('focostv_advertising_options'); ?>
